@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import React from 'react';
 import axios from 'axios';
 
 interface Pokemon {
@@ -17,7 +16,7 @@ function App() {
   useEffect(() => {
     const fetchAllPokemon = async () => {
       try {
-        let allPokemon = [];
+        let allPokemon : Pokemon[] = [];
         let nextUrl = 'https://pokeapi.co/api/v2/pokemon?limit=100';  
 
        
