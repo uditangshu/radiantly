@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import React from 'react';
 import axios from 'axios';
 
 interface Pokemon {
@@ -9,38 +10,70 @@ interface Pokemon {
 function App() {
   const [pokemonList, setPokemonList] = useState<Pokemon[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 21; 
 
   useEffect(() => {
-    const fetchPokemon = async () => {
+    const fetchAllPokemon = async () => {
       try {
-        const response = await axios.get('https://pokeapi.co/api/v2/pokemon?limit=151');
-        const results = response.data.results;
+        let allPokemon = [];
+        let nextUrl = 'https://pokeapi.co/api/v2/pokemon?limit=100';  
 
-        const pokemonDetails = await Promise.all(
-          results.map(async (pokemon: any) => {
-            const details = await axios.get(pokemon.url);
-            return {
-              name: pokemon.name,
-              image: details.data.sprites.front_default
-            };
-          })
-        );
+       
+        while (nextUrl) {
+          const response = await axios.get(nextUrl);
+          const { results, next } = response.data;
 
-        setPokemonList(pokemonDetails);
+          const pokemonDetails = await Promise.all(
+            results.map(async (pok: any) => {
+              const details = await axios.get(pok.url);
+              return {
+                name: pok.name,
+                image: details.data.sprites.front_default,
+              };
+            })
+          );
+
+          allPokemon = [...allPokemon, ...pokemonDetails];
+          nextUrl = next;
+        }
+
+        setPokemonList(allPokemon);
+        setLoading(false);
       } catch (e) {
         console.error('Error fetching Pokémon data:', e);
+        setLoading(false);
       }
     };
 
-    fetchPokemon();
+    fetchAllPokemon();
   }, []);
 
   const filteredPokemon = pokemonList.filter((pok) =>
     pok.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+ 
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentPokemon = filteredPokemon.slice(indexOfFirstItem, indexOfLastItem);
+
+  const nextPage = () => {
+    if (currentPage < Math.ceil(filteredPokemon.length / itemsPerPage)) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const prevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
   const handleSearch = (e: any) => {
     setSearchTerm(e.target.value);
+    setCurrentPage(1); 
   };
 
   return (
@@ -56,23 +89,53 @@ function App() {
         />
       </header>
 
-      <main className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 px-4 py-10">
-        {filteredPokemon.map((pok) => (
-          <div
-            key={pok.name}
-            className="bg-white bg-opacity-20 backdrop-blur-lg rounded-lg p-6 shadow-lg transform transition-all hover:scale-105"
-          >
-            <img
-              src={pok.image}
-              alt={pok.name}
-              className="mx-auto w-24 h-24 mb-4"
-            />
-            <h2 className="text-2xl font-semibold text-white capitalize">
-              {pok.name}
-            </h2>
+      {loading ? (
+        <p className="text-white text-2xl">Loading...</p>
+      ) : (
+        <div>
+          <main className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 px-4 py-10">
+            {currentPokemon.map((pok) => (
+              <div
+                key={pok.name}
+                className="bg-white bg-opacity-20 backdrop-blur-lg rounded-lg p-6 shadow-lg transform transition-all hover:scale-105"
+              >
+                <img
+                  src={pok.image}
+                  alt={pok.name}
+                  className="mx-auto w-24 h-24 mb-4"
+                />
+                <h2 className="text-2xl font-semibold text-white capitalize">
+                  {pok.name}
+                </h2>
+              </div>
+            ))}
+          </main>
+
+         
+          <div className="flex flex-col flex-1 justify-center mt-6">
+            <span className="text-white text-lg mr-4">
+              Page {currentPage} of {Math.ceil(filteredPokemon.length / itemsPerPage)}
+            </span>
+            <div className='flex justify-center mt-6'>
+
+            <button
+              onClick={prevPage}
+              disabled={currentPage === 1}
+              className={`px-4 py-2 mb-6 mr-4 bg-gray-200 rounded-md ${currentPage === 1 ? 'cursor-not-allowed' : 'hover:bg-gray-300'}`}
+            >
+              Previous
+            </button>
+            <button
+              onClick={nextPage}
+              disabled={currentPage >= Math.ceil(filteredPokemon.length / itemsPerPage)}
+              className={`px-4 mb-6 py-2 bg-gray-200 rounded-md ${currentPage >= Math.ceil(filteredPokemon.length / itemsPerPage) ? 'cursor-not-allowed' : 'hover:bg-gray-300'}`}
+            >
+              Next
+            </button>
+            </div>
           </div>
-        ))}
-      </main>
+        </div>
+      )}
     </div>
   );
 }
