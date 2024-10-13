@@ -50,7 +50,7 @@ function App() {
   }, []);
 
   const filteredPokemon = pokemonList.filter((pok) =>
-    pok.name.toLowerCase().includes(searchTerm.toLowerCase())
+    pok.name.toLowerCase().includes(searchTerm.toLowerCase().trim())
   );
 
  
